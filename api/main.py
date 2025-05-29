@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from elevenlabs import generate, set_api_key
 from elevenlabs.api import Voices
 import os
@@ -7,6 +8,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 import tempfile
 import shutil
+import io
 
 # Load environment variables
 load_dotenv()
@@ -55,12 +57,14 @@ async def text_to_speech(request: TTSRequest):
             model="eleven_monolingual_v1"
         )
 
-        # Create a temporary file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_file:
-            temp_file.write(audio)
-            temp_file_path = temp_file.name
-
-        return {"audio_path": temp_file_path}
+        # Create a streaming response with the audio data
+        return StreamingResponse(
+            io.BytesIO(audio),
+            media_type="audio/mpeg",
+            headers={
+                "Content-Disposition": f'attachment; filename="tts_output.mp3"'
+            }
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
